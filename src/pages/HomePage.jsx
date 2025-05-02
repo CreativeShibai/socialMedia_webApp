@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   Table as Tabs,
   MessageSquare,
@@ -6,7 +7,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { api } from "../utils/api";
-import PostCard from "../components/post/PostCard";
+import Post from "../components/posts/Post";
 import CreatePostForm from "../components/post/CreatePostForm";
 import LoadingSpinner from "../components/ui/LoadingSpinner";
 import { useAuth } from "../context/AuthContext";
@@ -17,6 +18,7 @@ const HomePage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
+  const [postLoading, setPostLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [error, setError] = useState(null);
@@ -37,14 +39,17 @@ const HomePage = () => {
         endpoint += `?type=${activeTab.toUpperCase()}`;
       }
 
-      endpoint += activeTab === "all" ? "?" : "&";
+      endpoint += activeTab === "all" ? (reset ? "?" : "&") : "&";
       endpoint += `page=${currentPage}&size=10`;
 
+      setPostLoading(true);
       const response = await api.get(endpoint);
 
       if (reset) {
         setPosts(response.data.content);
       } else {
+        if(response.data.content.length === 0) setHasMore(false)
+        else
         setPosts((prev) => [...prev, ...response.data.content]);
       }
 
@@ -55,7 +60,7 @@ const HomePage = () => {
         "Failed to load posts. Please ensure the backend server is running."
       );
       console.error("Failed to fetch posts:", error);
-    } finally {
+    }finally{
       setLoading(false);
     }
   };
@@ -70,7 +75,8 @@ const HomePage = () => {
 
   const handleLoadMore = () => {
     if (!loading && hasMore) {
-      fetchPosts();
+        setPostLoading(true);
+        fetchPosts();
     }
   };
 
@@ -82,7 +88,7 @@ const HomePage = () => {
     setPosts((prev) =>
       prev.map((post) => (post.id === updatedPost.id ? updatedPost : post))
     );
-  };
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -158,20 +164,21 @@ const HomePage = () => {
             {error ? "Failed to load posts" : "No posts found"}
           </p>
           {activeTab !== "all" && !error && (
-            <button
-              onClick={() => handleTabChange("all")}
-              className="mt-2 text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              View all posts
-            </button>
+              <button
+                onClick={() => handleTabChange("all")}
+                className="mt-2 text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                View all posts
+              </button>
           )}
         </div>
       ) : (
         <>
           <div className="space-y-4">
-            {posts.map((post) => (
-              <PostCard
+            {posts?.map((post) => (
+              <Post
                 key={post.id}
+                
                 post={post}
                 onPostUpdate={handlePostUpdate}
               />
@@ -181,15 +188,16 @@ const HomePage = () => {
           {hasMore && (
             <div className="mt-6 text-center">
               <button
-                onClick={handleLoadMore}
-                disabled={loading}
-                className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  onClick={handleLoadMore}
+                  disabled={loading}
+                  className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                {loading ? (
-                  <span className="flex items-center">
-                    <LoadingSpinner size="sm" className="mr-2" />
-                    Loading...
-                  </span>
+                {postLoading ? (
+                    <span className="flex items-center">
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Loading...
+                    </span>
+                  
                 ) : (
                   "Load More"
                 )}
